@@ -12,9 +12,6 @@ const USERS_TABLE = process.env.USERS_TABLE;
 
 const app = express();
 
-app.get("/", function (req, res) {
-  res.send("Hello World!");
-});
 
 const IS_OFFLINE = process.env.IS_OFFLINE;
 let dynamoDb;
@@ -31,6 +28,11 @@ if (IS_OFFLINE === "true") {
 app.use(bodyParser.json({ strict: false }));
 
 const apiRouter = express.Router();
+
+apiRouter.get("/health", function (req, res) {
+  res.send("Hello World!");
+});
+
 // Get User endpoint
 apiRouter.get("/users/:userId", async function (req, res) {
   const params = {

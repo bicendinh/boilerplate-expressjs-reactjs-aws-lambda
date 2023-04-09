@@ -15,6 +15,8 @@ package:
 custom:
   tableName: 'users-table-${self:provider.stage}'
   siteName: 'bicendinh-users-${self:provider.stage}'
+  projectName: expressjs-aws-lambda
+  apiLambda: app
   s3Sync:
     - bucketName: ${self:custom.siteName}
       localDir: frontend/build
@@ -45,14 +47,9 @@ provider:
 
 functions:
   app:
+    name: ${self:custom.projectName}-${self:custom.apiLambda}
     handler: index.handler
-    events:
-      - http: 
-          method: ANY 
-          path: /api
-      - http: 
-          method: ANY 
-          path: /api/{proxy+}
+
 
 resources:
   Resources:
@@ -100,3 +97,116 @@ resources:
                     "/*"
                   ]
                 ]
+    ApiGatewayRestApi:
+      Type: AWS::ApiGateway::RestApi
+      Properties:
+        Name: hello-api
+    ApiGatewayV1Resource:
+      Type: AWS::ApiGateway::Resource
+      Properties:
+        ParentId:
+          Fn::GetAtt: [ ApiGatewayRestApi , RootResourceId]
+        PathPart: api
+        RestApiId: !Ref ApiGatewayRestApi
+    ApiGatewayHelloResource:
+      Type: AWS::ApiGateway::Resource
+      Properties:
+        ParentId: !Ref ApiGatewayV1Resource
+        PathPart: '{proxy+}'
+        RestApiId: !Ref ApiGatewayRestApi
+    ApiGatewayCreateResourceGetMethod:
+      Type: AWS::ApiGateway::Method
+      Properties:
+        AuthorizationType: NONE
+        HttpMethod: ANY
+        Integration:
+          IntegrationHttpMethod: POST
+          Type: AWS_PROXY
+          Uri: !Join
+            - ''
+            - - "arn:aws:apigateway:"
+              - Ref: 'AWS::Region'
+              - ":lambda:path/2015-03-31/functions/arn:aws:lambda:"
+              - Ref: 'AWS::Region'
+              - ":"
+              - Ref: 'AWS::AccountId'
+              - ":function:"
+              - ${self:custom.projectName}
+              - "-"
+              - ${self:custom.apiLambda}
+              - "/invocations"
+        MethodResponses:
+          - StatusCode: 200
+        ResourceId: !Ref ApiGatewayHelloResource
+        RestApiId: !Ref ApiGatewayRestApi
+      DependsOn: ApiLambdaPermission
+    ApiGatewayDeployment:
+      Type: AWS::ApiGateway::Deployment
+      DependsOn:
+        - ApiGatewayCreateResourceGetMethod
+      Properties:
+        RestApiId: !Ref ApiGatewayRestApi
+        StageName: prod
+    ApiLambdaPermission:
+      Type: AWS::Lambda::Permission
+      Properties:
+        Action: lambda:InvokeFunction
+        FunctionName: ${self:custom.projectName}-${self:custom.apiLambda}
+        Principal: apigateway.amazonaws.com
+    WebpageCDN:
+      Type: AWS::CloudFront::Distribution
+      DependsOn: #without those explicit depends, the creation just fails
+        - ApiGatewayDeployment
+        - StaticSite
+      Properties:
+        DistributionConfig:
+          DefaultCacheBehavior: #this section defines attached behaviors, first the S3 origin
+            ForwardedValues:
+              QueryString: true
+            TargetOriginId: webpage #name of the origin
+            ViewerProtocolPolicy: redirect-to-https
+          CacheBehaviors: #second the behavior for the API Gateway
+            - AllowedMethods: #allow all method for the backend to implement
+                - DELETE
+                - GET
+                - HEAD
+                - OPTIONS
+                - PATCH
+                - POST
+                - PUT
+              CachedMethods: #cache only on get requests
+                - GET
+                - HEAD
+                - OPTIONS
+              Compress: true
+              ForwardedValues:
+                Headers: #define explicit headers, since API Gateway doesn't work otherwise
+                  - Accept
+                  - Referer
+                  - Athorization
+                  - Content-Type
+                QueryString: true #to transfer get parameters to the gateway
+              PathPattern: "/api/*" #path pattern after the Gateway stage identifier.
+              TargetOriginId: api #id of the orignin
+              ViewerProtocolPolicy: https-only #API Gateway only support https
+          DefaultRootObject: index.html
+          Enabled: true
+          Origins:
+            - DomainName: #define the s3 origin
+                Fn::GetAtt: [ StaticSite , "DomainName" ]
+              Id: webpage
+              S3OriginConfig:
+                OriginAccessIdentity:
+                  Ref: AWS::NoValue
+            - DomainName: #define the API Gateway origin
+                Fn::Join:
+                  - ""
+                  - - Ref: ApiGatewayRestApi
+                    - ".execute-api."
+                    - Ref: AWS::Region
+                    - ".amazonaws.com"
+              Id: api
+              CustomOriginConfig:
+                OriginProtocolPolicy: https-only #again API-Gateway only supports https
+              OriginPath: /prod #name of the deployed stage
+          PriceClass: PriceClass_100

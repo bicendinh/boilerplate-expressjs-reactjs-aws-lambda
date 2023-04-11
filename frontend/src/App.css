@@ -27,10 +27,18 @@ body {
   visibility: hidden !important;
 }
 
+.btn-action {
+  width: 35px !important;
+}
+
 .todo-item:hover .todo-actions {
   visibility: visible !important;
 }
 
 .todo-item.editing .todo-actions .edit-icon {
   display: none !important;
+}
+
+.custom-select {
+  width: 190px !important;
 }

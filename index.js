@@ -61,7 +61,7 @@ apiRouter.get("/todos/:id", async function (req, res) {
 
 // Update Todo endpoint
 apiRouter.put("/todos/:id", async function (req, res) {
-  const { name } = req.body;
+  const { name, completed, duedate } = req.body;
 
   try {
     const getParams = {
@@ -74,11 +74,14 @@ apiRouter.put("/todos/:id", async function (req, res) {
     if (!getResult.Item) {
       res.status(404).json({ error: "Item not found" });
     }
+    const oldItem = unmarshall(getResult.Item);
     const params = {
       TableName: TODOS_TABLE,
       Item: marshall({
         itemId: req.params.id,
-        name,
+        name: name || oldItem.name,
+        completed: completed || oldItem.completed,
+        duedate: duedate || oldItem.duedate,
       }),
     };
     await dynamoDb.send(new PutItemCommand(params));
@@ -86,7 +89,7 @@ apiRouter.put("/todos/:id", async function (req, res) {
   } catch (error) {
     if (error) {
       console.log(error);
-      res.status(400).json({ error: "Could not get item" });
+      res.status(400).json({ error: "Could not update item" });
     }
   }
 });
@@ -114,7 +117,6 @@ apiRouter.delete("/todos/:id", async function (req, res) {
 
     await dynamoDb.send(new DeleteItemCommand(params));
     res.sendStatus(202);
-
   } catch (error) {
     if (error) {
       console.log(error);
@@ -131,12 +133,7 @@ apiRouter.get("/todos", async function (req, res) {
 
   try {
     const result = await dynamoDb.send(new ScanCommand(params));
-    console.log("result", result);
-    if (result.Count) {
-      res.json(result.Items.map((item) => unmarshall(item)));
-    } else {
-      res.status(404).json({ error: "There is not any item" });
-    }
+    res.json(result.Items.map((item) => unmarshall(item)));
   } catch (error) {
     if (error) {
       console.log(error);
@@ -147,8 +144,7 @@ apiRouter.get("/todos", async function (req, res) {
 
 // Create Todo endpoint
 apiRouter.post("/todos", async function (req, res) {
-  console.log(req.body);
-  const { name } = req.body;
+  const { name, duedate } = req.body;
 
   if (typeof name !== "string") {
     res.status(400).json({ error: '"name" must be a string' });
@@ -160,12 +156,14 @@ apiRouter.post("/todos", async function (req, res) {
     Item: marshall({
       itemId: newId,
       name,
+      duedate,
+      completed: false,
+      created: new Date().getTime()
     }),
   };
 
   try {
     const a = await dynamoDb.send(new PutItemCommand(params));
-    console.log(a);
     res.json({ itemId: newId, name });
   } catch (error) {
     if (error) {
@@ -173,6 +171,11 @@ apiRouter.post("/todos", async function (req, res) {
       res.status(400).json({ error: "Could not create item" });
     }
   }
+});
+
+app.use((req, res, next) => {
+  res.set("Cache-Control", "no-store");
+  next();
 });
 
 app.use("/api", apiRouter);

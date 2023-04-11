@@ -7,12 +7,13 @@
 #
 
 ### Quick Start
-* Install
+* Install serverless
 
 ```shell
 npm install -g serverless
 ```
-* Install Package & Build Front-end
+
+* Install Packages & Build Front-end
 
 ```shell
 yarn install # install serverless package

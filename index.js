@@ -5,13 +5,14 @@ import {
   DynamoDBClient,
   PutItemCommand,
   GetItemCommand,
+  DeleteItemCommand,
 } from "@aws-sdk/client-dynamodb";
-import { marshall , unmarshall} from "@aws-sdk/util-dynamodb";
+import { v4 as uuidv4 } from "uuid";
+import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 
-const USERS_TABLE = process.env.USERS_TABLE;
+const TODOS_TABLE = process.env.TODOS_TABLE;
 
 const app = express();
-
 
 const IS_OFFLINE = process.env.IS_OFFLINE;
 let dynamoDb;
@@ -33,12 +34,12 @@ apiRouter.get("/health", function (req, res) {
   res.send("Hello World!");
 });
 
-// Get User endpoint
-apiRouter.get("/users/:userId", async function (req, res) {
+// Get Todo endpoint
+apiRouter.get("/todos/:id", async function (req, res) {
   const params = {
-    TableName: USERS_TABLE,
+    TableName: TODOS_TABLE,
     Key: marshall({
-      userId: req.params.userId,
+      id: req.params.id,
     }),
   };
 
@@ -47,41 +48,87 @@ apiRouter.get("/users/:userId", async function (req, res) {
     if (result.Item) {
       res.json(unmarshall(result.Item));
     } else {
-      res.status(404).json({ error: "User not found" });
+      res.status(404).json({ error: "Item not found" });
     }
   } catch (error) {
     if (error) {
       console.log(error);
-      res.status(400).json({ error: "Could not get user" });
+      res.status(400).json({ error: "Could not get item" });
     }
   }
 });
 
-// Create User endpoint
-apiRouter.post("/users", async function (req, res) {
-  console.log(req.body);
-  const { userId, name } = req.body;
-  if (typeof userId !== "string") {
-    res.status(400).json({ error: '"userId" must be a string' });
-  } else if (typeof name !== "string") {
-    res.status(400).json({ error: '"name" must be a string' });
-  }
-
+// Delete Todo endpoint
+apiRouter.delete("/todos/:id", async function (req, res) {
   const params = {
-    TableName: USERS_TABLE,
-    Item: marshall({
-      userId: userId,
-      name: name,
+    TableName: TODOS_TABLE,
+    Key: marshall({
+      id: req.params.id,
     }),
   };
 
   try {
-    await dynamoDb.send(new PutItemCommand(params));
-    res.json({ userId, name });
+    const result = await dynamoDb.send(new DeleteItemCommand(params));
+    console.log("result", result);
+    if (result.Item) {
+      res.json(unmarshall(result.Item));
+    } else {
+      res.status(404).json({ error: "Item not found" });
+    }
   } catch (error) {
     if (error) {
       console.log(error);
-      res.status(400).json({ error: "Could not create user" });
+      res.status(400).json({ error: "Could not get item" });
+    }
+  }
+});
+
+// Get Todos endpoint
+apiRouter.get("/todos", async function (req, res) {
+  const params = {
+    TableName: TODOS_TABLE,
+  };
+
+  try {
+    const result = await dynamoDb.send(new GetItemCommand(params));
+    if (result.Item) {
+      res.json(unmarshall(result.Item));
+    } else {
+      res.status(404).json({ error: "There is not any item" });
+    }
+  } catch (error) {
+    if (error) {
+      console.log(error);
+      res.status(400).json({ error: "Could not get items" });
+    }
+  }
+});
+
+// Create Todo endpoint
+apiRouter.post("/todos", async function (req, res) {
+  console.log(req.body);
+  const { name } = req.body;
+
+  if (typeof name !== "string") {
+    res.status(400).json({ error: '"name" must be a string' });
+  }
+
+  const params = {
+    TableName: TODOS_TABLE,
+    Item: marshall({
+      id: uuidv4(),
+      name,
+    }),
+  };
+
+  try {
+    const a = await dynamoDb.send(new PutItemCommand(params));
+    console.log(a);
+    res.json({ id: uuidv4(), name });
+  } catch (error) {
+    if (error) {
+      console.log(error);
+      res.status(400).json({ error: "Could not create item" });
     }
   }
 });

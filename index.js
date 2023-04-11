@@ -80,7 +80,8 @@ apiRouter.put("/todos/:id", async function (req, res) {
       Item: marshall({
         itemId: req.params.id,
         name: name || oldItem.name,
-        completed: completed || oldItem.completed,
+        completed:
+          typeof completed === "boolean" ? completed : oldItem.completed,
         duedate: duedate || oldItem.duedate,
       }),
     };
@@ -158,7 +159,7 @@ apiRouter.post("/todos", async function (req, res) {
       name,
       duedate,
       completed: false,
-      created: new Date().getTime()
+      created: new Date().getTime(),
     }),
   };
 

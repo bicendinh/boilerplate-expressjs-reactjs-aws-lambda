@@ -14,7 +14,6 @@ export default function TodoCreate() {
 
   const submitTodo = async () => {
     setSummiting(true);
-    console.log("dateRef.current.valu", dateRef.current.value);
     await createTodo({
       name: textRef.current.value,
       duedate: dateRef.current.value

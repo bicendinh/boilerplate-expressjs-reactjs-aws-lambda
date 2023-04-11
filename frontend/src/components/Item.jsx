@@ -82,17 +82,19 @@ export default function Item({ name, itemId, completed, duedate, created }) {
           onChange={(event) => setNameState(event.target.value)}
           title={name}
         />
-        {editing && (
-          <Col className="col-auto d-flex align-items-center rounded bg-white border border-warning ms-3">
-            <Form.Control
-              type="date"
-              ref={dateRef}
-              defaultValue={duedateString}
-            />
-          </Col>
-        )}
+        <Col
+          className={`col-auto d-flex align-items-center rounded bg-white border border-warning ms-3 ${
+            editing ? "" : "d-none"
+          }`}
+        >
+          <Form.Control
+            type="date"
+            ref={dateRef}
+            defaultValue={duedateString}
+          />
+        </Col>
       </Col>
-      {duedateString && (
+      {duedateString && !editing && (
         <Col className="col-auto m-1 p-0 px-3">
           <Row>
             <Col className="col-auto d-flex align-items-center rounded bg-white border border-warning">

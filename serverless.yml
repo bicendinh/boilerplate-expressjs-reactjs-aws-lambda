@@ -13,7 +13,7 @@ package:
     - frontend/**
 
 custom:
-  tableName: 'todos-table-${self:provider.stage}'
+  tableName: 'todos-${self:provider.stage}'
   siteName: 'bicendinh-todo-${self:provider.stage}'
   projectName: expressjs-aws-lambda
   apiLambda: app
@@ -59,9 +59,6 @@ resources:
         AttributeDefinitions:
            -
             AttributeName: itemId
-            AttributeType: S
-           -
-            AttributeName: name
             AttributeType: S
         KeySchema:
           -
@@ -156,6 +153,7 @@ resources:
         Action: lambda:InvokeFunction
         FunctionName: ${self:custom.projectName}-${self:custom.apiLambda}
         Principal: apigateway.amazonaws.com
+      DependsOn: AppLambdaFunction
     WebpageCDN:
       Type: AWS::CloudFront::Distribution
       DependsOn: #without those explicit depends, the creation just fails
@@ -177,11 +175,6 @@ resources:
                 - PATCH
                 - POST
                 - PUT
-              CachedMethods: #cache only on get requests
-                - GET
-                - HEAD
-                - OPTIONS
-              Compress: true
               ForwardedValues:
                 Headers: #define explicit headers, since API Gateway doesn't work otherwise
                   - Accept

@@ -6,6 +6,7 @@ import {
   PutItemCommand,
   GetItemCommand,
   DeleteItemCommand,
+  ScanCommand,
 } from "@aws-sdk/client-dynamodb";
 import { v4 as uuidv4 } from "uuid";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
@@ -39,7 +40,7 @@ apiRouter.get("/todos/:id", async function (req, res) {
   const params = {
     TableName: TODOS_TABLE,
     Key: marshall({
-      id: req.params.id,
+      itemId: req.params.id,
     }),
   };
 
@@ -58,23 +59,62 @@ apiRouter.get("/todos/:id", async function (req, res) {
   }
 });
 
+// Update Todo endpoint
+apiRouter.put("/todos/:id", async function (req, res) {
+  const { name } = req.body;
+
+  try {
+    const getParams = {
+      TableName: TODOS_TABLE,
+      Key: marshall({
+        itemId: req.params.id,
+      }),
+    };
+    const getResult = await dynamoDb.send(new GetItemCommand(getParams));
+    if (!getResult.Item) {
+      res.status(404).json({ error: "Item not found" });
+    }
+    const params = {
+      TableName: TODOS_TABLE,
+      Item: marshall({
+        itemId: req.params.id,
+        name,
+      }),
+    };
+    await dynamoDb.send(new PutItemCommand(params));
+    res.sendStatus(202);
+  } catch (error) {
+    if (error) {
+      console.log(error);
+      res.status(400).json({ error: "Could not get item" });
+    }
+  }
+});
+
 // Delete Todo endpoint
 apiRouter.delete("/todos/:id", async function (req, res) {
   const params = {
     TableName: TODOS_TABLE,
     Key: marshall({
-      id: req.params.id,
+      itemId: req.params.id,
     }),
   };
 
   try {
-    const result = await dynamoDb.send(new DeleteItemCommand(params));
-    console.log("result", result);
-    if (result.Item) {
-      res.json(unmarshall(result.Item));
-    } else {
+    const getParams = {
+      TableName: TODOS_TABLE,
+      Key: marshall({
+        itemId: req.params.id,
+      }),
+    };
+    const getResult = await dynamoDb.send(new GetItemCommand(getParams));
+    if (!getResult.Item) {
       res.status(404).json({ error: "Item not found" });
     }
+
+    await dynamoDb.send(new DeleteItemCommand(params));
+    res.sendStatus(202);
+
   } catch (error) {
     if (error) {
       console.log(error);
@@ -90,9 +130,10 @@ apiRouter.get("/todos", async function (req, res) {
   };
 
   try {
-    const result = await dynamoDb.send(new GetItemCommand(params));
-    if (result.Item) {
-      res.json(unmarshall(result.Item));
+    const result = await dynamoDb.send(new ScanCommand(params));
+    console.log("result", result);
+    if (result.Count) {
+      res.json(result.Items.map((item) => unmarshall(item)));
     } else {
       res.status(404).json({ error: "There is not any item" });
     }
@@ -113,10 +154,11 @@ apiRouter.post("/todos", async function (req, res) {
     res.status(400).json({ error: '"name" must be a string' });
   }
 
+  const newId = uuidv4();
   const params = {
     TableName: TODOS_TABLE,
     Item: marshall({
-      id: uuidv4(),
+      itemId: newId,
       name,
     }),
   };
@@ -124,7 +166,7 @@ apiRouter.post("/todos", async function (req, res) {
   try {
     const a = await dynamoDb.send(new PutItemCommand(params));
     console.log(a);
-    res.json({ id: uuidv4(), name });
+    res.json({ itemId: newId, name });
   } catch (error) {
     if (error) {
       console.log(error);
@@ -134,4 +176,5 @@ apiRouter.post("/todos", async function (req, res) {
 });
 
 app.use("/api", apiRouter);
+
 export const handler = serverless(app);

@@ -4,7 +4,7 @@ import Form from "react-bootstrap/Form";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { icon } from "@fortawesome/fontawesome-svg-core/import.macro";
 
-export default function Item() {
+export default function Item({ name }) {
   return (
     <Row className="px-3 align-items-center todo-item rounded">
       <Col className="col-auto m-1 p-0 d-flex align-items-center">
@@ -30,13 +30,13 @@ export default function Item() {
           type="text"
           className="form-control-lg border-0 edit-todo-input bg-transparent rounded px-3"
           readonly
-          value="Renew car insurance"
-          title="Renew car insurance"
+          value={name}
+          title={name}
         />
         <Form.Control
           type="text"
           className="form-control-lg border-0 edit-todo-input rounded px-3 d-none"
-          value="Renew car insurance"
+          value={name}
         />
       </Col>
       <Col className="col-auto m-1 p-0 px-3">

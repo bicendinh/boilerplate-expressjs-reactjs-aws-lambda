@@ -1,8 +1,8 @@
 import axios from "axios";
 
-export const getAllUsers = async () => {
+export const getAllTodos= async () => {
   const result = await axios.get(
-    `/api/users`
+    `/api/todos`
   );
   return result.data;
 };

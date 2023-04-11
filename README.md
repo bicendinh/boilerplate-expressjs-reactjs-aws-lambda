@@ -29,7 +29,7 @@ sls deploy
 
 ### Demo 
 
-Live demo: [link](https://d1qwbdrazy3d83.cloudfront.net)
+Live demo: [link](https://d1qs4ydf4103fv.cloudfront.net)
 
 ### License
 [![license](https://img.shields.io/badge/license-MIT-4dc71f.svg)](https://raw.githubusercontent.com/TheSoftwareHouse/serverless-boilerplate/main/LICENSE)

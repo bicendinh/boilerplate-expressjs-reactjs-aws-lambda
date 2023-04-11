@@ -1,6 +1,6 @@
 # serverless.yml
 
-service: expressjs-aws-lambda
+service: expressjs-reactjs-aws-lambda
 
 	
 plugins:
@@ -9,13 +9,14 @@ plugins:
   - serverless-s3-sync
 
 package: 
-  exclude:
-    - frontend/**
+  patterns:
+    - '!frontend/**'
+    - '!README.md'
 
 custom:
-  tableName: 'todos-${self:provider.stage}'
-  siteName: 'bicendinh-todo-${self:provider.stage}'
-  projectName: expressjs-aws-lambda
+  tableName: 'todo-${self:provider.stage}'
+  siteName: 'bicen-dinh-todo-${self:provider.stage}'
+  projectName: expressjs-reactjs-aws-lambda
   apiLambda: app
   s3Sync:
     - bucketName: ${self:custom.siteName}
@@ -29,6 +30,14 @@ provider:
   runtime: nodejs16.x
   stage: dev
   region: us-east-1
+  apiGateway:
+    usagePlan:
+      quota:
+        limit: 50
+        period: MONTH
+      throttle:
+        burstLimit: 10
+        rateLimit: 5
   iam:
     role:
       statements:
@@ -64,9 +73,7 @@ resources:
           -
             AttributeName: itemId
             KeyType: HASH
-        ProvisionedThroughput:
-          ReadCapacityUnits: 1
-          WriteCapacityUnits: 1
+        BillingMode: PAY_PER_REQUEST
         TableName: ${self:custom.tableName}
     StaticSite:
       Type: AWS::S3::Bucket
@@ -100,7 +107,7 @@ resources:
     ApiGatewayRestApi:
       Type: AWS::ApiGateway::RestApi
       Properties:
-        Name: hello-api
+        Name: todo-api
     ApiGatewayV1Resource:
       Type: AWS::ApiGateway::Resource
       Properties:
@@ -108,7 +115,7 @@ resources:
           Fn::GetAtt: [ ApiGatewayRestApi , RootResourceId]
         PathPart: api
         RestApiId: !Ref ApiGatewayRestApi
-    ApiGatewayHelloResource:
+    ApiGatewayTodoResource:
       Type: AWS::ApiGateway::Resource
       Properties:
         ParentId: !Ref ApiGatewayV1Resource
@@ -137,7 +144,7 @@ resources:
               - "/invocations"
         MethodResponses:
           - StatusCode: 200
-        ResourceId: !Ref ApiGatewayHelloResource
+        ResourceId: !Ref ApiGatewayTodoResource
         RestApiId: !Ref ApiGatewayRestApi
       DependsOn: ApiLambdaPermission
     ApiGatewayDeployment:

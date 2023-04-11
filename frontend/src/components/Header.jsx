@@ -7,7 +7,7 @@ export default function Header() {
   return (
     <Row className="m-1 p-4">
       <Col>
-        <a href="https://github.com/bicendinh/expressjs-aws-lambda">
+        <a href="https://github.com/bicendinh/boilerplate-expressjs-reactjs-aws-lambda">
           Back to Github
         </a>
         <div className="p-1 h1 text-primary text-center mx-auto display-inline-block">
